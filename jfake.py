@@ -602,7 +602,7 @@ if args.numba:
     def numba_rgb2ycbcr(trafo_table, rgb):
         rgb = rgb.astype(nb.float64)
         ycbcr = trafo_table @ rgb
-        np.round(ycbcr, 0, ycbcr)
+        np.rint(ycbcr, ycbcr)
         y = ycbcr[0].astype(np.uint8)
         cb = (ycbcr[1] + 128).astype(nb.uint8)
         cr = (ycbcr[2] + 128).astype(nb.uint8)
@@ -613,7 +613,7 @@ if args.numba:
         ycbcr[1] = ycbcr[1] - 128
         ycbcr[2] = ycbcr[2] - 128
         rgb = trafo_table @ ycbcr
-        np.round(rgb, 0, rgb)
+        np.rint(rgb, rgb)
         rgb = rgb.astype(nb.int16)
         return rgb
 
@@ -637,11 +637,10 @@ if args.numba:
         if forward:
             for i in nb.prange(img8x8.shape[0]):
                 img8x8[i] = img8x8[i] / quality_table
+            np.rint(img8x8, img8x8)
         else:
             for i in nb.prange(img8x8.shape[0]):
                 img8x8[i] = img8x8[i] * quality_table
-        np.round(img8x8, 0, img8x8)
-        img8x8 = img8x8.astype(nb.int16)
         return img8x8
 
 def compute_psnr(diff_img):
