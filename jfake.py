@@ -109,11 +109,11 @@ class Trafo:
         self.trafo_table = np.array([
         [0.299,0.587,0.114],
         [-0.169,-0.331,0.5],
-        [0.5,-0.419,-0.081]])
+        [0.5,-0.419,-0.081]]).astype(np.float32)
         self.backtrafo_table = np.array([
         [1, 0, 1.402],
         [1, -0.34414, -0.71414],
-        [1, 1.772, 0]])
+        [1, 1.772, 0]]).astype(np.float32)
 
     def __extend_img(self):
         """create new pics and extend if necessary, so it's dividable by 8"""
@@ -248,10 +248,10 @@ class Trafo:
         if args.numba:
             rgb = numba_ycbcr2rgb(self.backtrafo_table, ycbcr)
         else:
-            ycbcr[1] = ycbcr[1] - 128
-            ycbcr[2] = ycbcr[2] - 128
+            ycbcr[1] -= 128
+            ycbcr[2] -= 128
             rgb = self.backtrafo_table @ ycbcr
-            rgb = np.round(rgb).astype(np.int16)
+            rgb = np.rint(rgb).astype(np.int16)
 
         rgb = rgb.reshape(3, self.height_e, self.width_e)
         rgb = np.clip(rgb, 0, 255)
@@ -361,7 +361,7 @@ class DCT:
                 else:
                     c = 1
                 x[...] = np.sqrt(2/8)*c*np.cos((np.pi*it.multi_index[0]*(2*it.multi_index[1]+1))/(2*8))
-        return dct_table
+        return dct_table.astype(np.float32)
 
     def compute_DCT(self, f8x8, forward):
         """splits lists with 64 elements into 8x8 element lists and 
@@ -517,10 +517,10 @@ class Quantization:
             img8x8 = numba_quantize(img8x8, quality_table, forward)
         else:
             if forward:
-                img8x8 = img8x8 / quality_table
+                img8x8 /= quality_table
+                np.rint(img8x8, img8x8)
             else:
-                img8x8 = img8x8 * quality_table
-            img8x8 = np.round(img8x8).astype(np.int16)
+                img8x8 *= quality_table
         return img8x8
 
     def quantize(self, y_q, cb_q, cr_q, forward):
@@ -600,18 +600,18 @@ class Entropy:
 if args.numba:
     @nb.njit(parallel=True, cache=True)
     def numba_rgb2ycbcr(trafo_table, rgb):
-        rgb = rgb.astype(nb.float64)
+        rgb = rgb.astype(nb.float32)
         ycbcr = trafo_table @ rgb
         np.rint(ycbcr, ycbcr)
-        y = ycbcr[0].astype(np.uint8)
-        cb = (ycbcr[1] + 128).astype(nb.uint8)
-        cr = (ycbcr[2] + 128).astype(nb.uint8)
+        y = ycbcr[0]
+        cb = (ycbcr[1] + 128)
+        cr = (ycbcr[2] + 128)
         return y, cb, cr
 
     @nb.njit(parallel=True, cache=True)
     def numba_ycbcr2rgb(trafo_table, ycbcr):
-        ycbcr[1] = ycbcr[1] - 128
-        ycbcr[2] = ycbcr[2] - 128
+        ycbcr[1] -= 128
+        ycbcr[2] -= 128
         rgb = trafo_table @ ycbcr
         np.rint(rgb, rgb)
         rgb = rgb.astype(nb.int16)
@@ -619,7 +619,7 @@ if args.numba:
 
     @nb.njit(parallel=True, cache=True)
     def numba_DCT(f8x8, dct_table, forward):
-        f8x8 = f8x8.astype(nb.float64)
+        f8x8 = f8x8.astype(nb.float32)
         dct = np.empty_like(f8x8)
         if forward:
             # G: DCT spectrum, g: Input signal A: transformation matrix
@@ -632,15 +632,17 @@ if args.numba:
                 dct[i] = dct_table.T @ f8x8[i] @ dct_table
         return dct
 
-    @nb.njit(parallel=True, cache=True)
+    @nb.njit(parallel=True, cache=True, error_model='numpy', fastmath=True)
+    #@nb.njit(parallel=True, cache=True)
+
     def numba_quantize(img8x8, quality_table, forward):
         if forward:
             for i in nb.prange(img8x8.shape[0]):
-                img8x8[i] = img8x8[i] / quality_table
+                img8x8[i] /= quality_table
             np.rint(img8x8, img8x8)
         else:
             for i in nb.prange(img8x8.shape[0]):
-                img8x8[i] = img8x8[i] * quality_table
+                img8x8[i] *= quality_table
         return img8x8
 
 def compute_psnr(diff_img):
