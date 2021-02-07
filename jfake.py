@@ -458,7 +458,6 @@ class Quantization:
             self.__write_qtables_to_textfile(self.quality_qtable_y, self.quality_qtable_c)
 
         tmp = self.__check_qualityvalue(self.quality_qtable_y, self.quality_qtable_c)
-        print(tmp)
         Q = np.rint(tmp)
 
         if(args.verbose):
@@ -571,7 +570,7 @@ class Entropy:
         else:
             with open (os.path.join(inputpath, args.output, infilename + "_entropy.txt"), "a") as entropy_txt:
                 for i, channel in enumerate([c1, c2, c3]):
-                    channel = np.round(channel.flatten()).astype(np.int16)
+                    channel = np.rint(channel.flatten()).astype(np.int16)
                     H = Entropy.__compute_entropy(self, channel)
                     if i == 0:
                         channel_string = "Y "
