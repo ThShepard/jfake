@@ -5,7 +5,9 @@ import os.path # folder structure of operating system
 import sys # open files from the file system
 import time # to implement timers of individual tasks
 from math import cos, pi, sqrt # used for mathematical operations
-import numpy as np # pip install numpy - used for mathematical operations
+import cupy as np # pip install numpy - used for mathematical operations
+#import numpy as np
+import numpy
 from string import ascii_letters
 # initialize parser
 #  type= filetype
@@ -105,7 +107,7 @@ class Trafo:
         self.r = np.array(self.img_ext.getchannel('R')).flatten()
         self.g = np.array(self.img_ext.getchannel('G')).flatten()
         self.b = np.array(self.img_ext.getchannel('B')).flatten()
-        self.rgb = np.concatenate(([self.r],[self.g],[self.b]))
+        self.rgb = np.concatenate((np.array([self.r]), np.array([self.g]), np.array([self.b])))
         self.trafo_table = np.array([
         [0.299,0.587,0.114],
         [-0.169,-0.331,0.5],
@@ -199,9 +201,9 @@ class Trafo:
             cb = ycbcr[1] + 128
             cr = ycbcr [2] + 128
 
-            y =  np.round(y).astype(np.uint8)
-            cb = np.round(cb).astype(np.uint8)
-            cr = np.round(cr).astype(np.uint8)
+            y =  np.rint(y).astype(np.uint8)
+            cb = np.rint(cb).astype(np.uint8)
+            cr = np.rint(cr).astype(np.uint8)
 
         if(args.debug):
             self.save_ycbcr_channels(y, cb, cr)
@@ -258,13 +260,13 @@ class Trafo:
         # bring axes in correct order
         rgb = np.swapaxes(rgb, 0,2)
         rgb = np.swapaxes(rgb, 0,1)
-        rgb_img = Image.fromarray(rgb.astype(np.uint8),'RGB')
+        rgb_img = Image.fromarray(np.asnumpy(rgb).astype(np.uint8),'RGB')
         crop_recomb = self.cropping_back(rgb_img)
 
         r = np.array(crop_recomb.getchannel('R')).flatten().astype(np.int16)
         g = np.array(crop_recomb.getchannel('G')).flatten().astype(np.int16)
         b = np.array(crop_recomb.getchannel('B')).flatten().astype(np.int16)
-        rgb_out = np.concatenate(([r],[g],[b]))
+        rgb_out = np.concatenate((np.array([r]), np.array([g]), np.array([b])))
 
         if(args.debug):
             crop_recomb.save(os.path.join(inputpath, args.output, "debug", infilename + "_rücktrafo.png"))
@@ -285,7 +287,7 @@ class Trafo:
         r = np.array(self.img.getchannel('R')).flatten()
         g = np.array(self.img.getchannel('G')).flatten()
         b = np.array(self.img.getchannel('B')).flatten()
-        rgb = np.concatenate(([r],[g],[b]))
+        rgb = np.concatenate((np.array([r]), np.array([g]), np.array([b])))
         return rgb.astype(np.int16)
 
     def get_size(self):
@@ -353,15 +355,15 @@ class DCT:
 
     def __compute_dct_table(self):
         """Computes each component of the transformation matrix for the dct. Returns a 8x8 ndarray """
-        dct_table = np.empty((8,8))
-        with np.nditer(dct_table, op_flags=['readwrite'], flags=['multi_index']) as it:
+        dct_table = numpy.empty((8,8))
+        with numpy.nditer(dct_table, op_flags=['readwrite'], flags=['multi_index']) as it:
             for x in it:
                 if it.multi_index[0]==0:
-                    c = 1/np.sqrt(2)
+                    c = 1/sqrt(2)
                 else:
                     c = 1
-                x[...] = np.sqrt(2/8)*c*np.cos((np.pi*it.multi_index[0]*(2*it.multi_index[1]+1))/(2*8))
-        return dct_table.astype(np.float32)
+                x[...] = sqrt(2/8)*c*cos((pi*it.multi_index[0]*(2*it.multi_index[1]+1))/(2*8))
+        return np.array(dct_table.astype(np.float32))
 
     def compute_DCT(self, f8x8, forward):
         """splits lists with 64 elements into 8x8 element lists and 
@@ -455,7 +457,9 @@ class Quantization:
         if(args.debug):
             self.__write_qtables_to_textfile(self.quality_qtable_y, self.quality_qtable_c)
 
-        Q = round(self.__check_qualityvalue(self.quality_qtable_y, self.quality_qtable_c), 2)
+        tmp = self.__check_qualityvalue(self.quality_qtable_y, self.quality_qtable_c)
+        print(tmp)
+        Q = np.rint(tmp)
 
         if(args.verbose):
             print("approximated computed check for quality value: " + str(Q))
@@ -498,7 +502,7 @@ class Quantization:
         m = (avg_y + 2*avg_c) / 3
         D = (abs(avg_y-avg_c) * 0.49) * 2
         Q = 100 - m + D
-        return Q
+        return Q.astype(np.float32)
 
     def __compute_qual_qtable(self, table):
         """computes new quantization table from quality value and base quantization table"""
@@ -506,7 +510,7 @@ class Quantization:
             S = 5000//self.quality
         else:
             S = 200 - 2*self.quality
-        quality_qtable = ([S]*table + 50) / 100
+        quality_qtable = (np.array([S])*table + 50) / 100
         quality_qtable = np.floor(quality_qtable).astype(np.uint8)
         return quality_qtable
 
@@ -672,8 +676,8 @@ def subtract_images(img_input, img_output, img_height, img_width):
     diff_multiplied = diff * args.multiplier
     diff_multiplied = np.clip(diff_multiplied, 0, 255)
 
-    diff_img = Image.fromarray(diff.astype(np.uint8), 'RGB')
-    diff_img_multiplied = Image.fromarray(diff_multiplied.astype(np.uint8), 'RGB')
+    diff_img = Image.fromarray(np.asnumpy(diff).astype(np.uint8), 'RGB')
+    diff_img_multiplied = Image.fromarray(np.asnumpy(diff_multiplied).astype(np.uint8), 'RGB')
     return diff_img, diff_img_multiplied
 
 def trafo_dct_q():
