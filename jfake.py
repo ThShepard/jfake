@@ -586,18 +586,17 @@ class Entropy:
                         entropy_txt.write("Entropy in channel " + str(channel_string) + " = " + str(H) + " bit per coefficient" + "\n")
 
     def __compute_entropy(self, values):
-        from collections import defaultdict
+        from collections import Counter
         """Builds a dictionary of values with total probabilities and returns entropy H
         H = -sum(p(i)*log(p(i)))  bit/symbol"""
-        value_counter = defaultdict(int)
-        for value in values:
-            value_counter[value] += 1
+        values = np.asnumpy(values)
+        value_counter = Counter(values)
         H = 0
         pixel = len(values)
-        for value in value_counter:
-            pi = value_counter[value]/pixel
+        for value in value_counter.values():
+            pi = value/pixel
             H = H + pi*np.log2(pi)
-        H = -round(H, 3)
+        H = -round(float(H), 3)
         return H
 
 if args.numba:
