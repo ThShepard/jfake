@@ -5,9 +5,6 @@ import os.path # folder structure of operating system
 import sys # open files from the file system
 import time # to implement timers of individual tasks
 from math import cos, pi, sqrt # used for mathematical operations
-import cupy as np # pip install numpy - used for mathematical operations
-#import numpy as np
-import numpy
 from string import ascii_letters
 # initialize parser
 #  type= filetype
@@ -26,10 +23,16 @@ parser.add_argument("--benchmark", "-b", action="store_true", dest="benchmark", 
 parser.add_argument("--entropy", "-e", action="store_true", dest="entropy", help="Calculate entropy in each processing step (default: False)")
 parser.add_argument("--psnr", "-p", action="store_true", dest="psnr", help="Calculate signal-to-noise-ratio (PSNR) (default: False)")
 parser.add_argument("--numba", "-n", action="store_true", dest="numba", help="Use numba jit compiler for better performance (default: False)")
+parser.add_argument("--cupy", "-c", action="store_true", dest="cupy", help="Use cupy to allocate CUDA for better performance (default: False)")
 args = parser.parse_args()
 
 if args.numba:
-    import numba as nb
+    import numba as nb # pip install wheel - pip install numba
+
+if args.cupy:
+    import cupy as np # pip install cupy - used for mathematical operations using CUDA
+else:
+    import numpy as np # pip install numpy - used for mathematical operations
 
 if args.quality <= 0 or args.quality > 99:
     raise Exception("The quality value should be in range of 1 to 99!")
