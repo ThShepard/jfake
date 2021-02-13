@@ -36,6 +36,9 @@ else:
 if args.quality <= 0 or args.quality > 99:
     raise Exception("The quality value should be in range of 1 to 99!")
 
+if args.numba and args.cupy:
+    raise Exception("Using Cupy and Numba at the same time is not possible.")
+
 auto = False
 if args.multiplier == 0:
     auto = True
@@ -363,13 +366,13 @@ class DCT:
     def __compute_dct_table(self):
         """Computes each component of the transformation matrix for the dct. Returns a 8x8 ndarray """
         dct_table = np.empty((8,8))
-        with np.nditer(dct_table, op_flags=['readwrite'], flags=['multi_index']) as it:
-            for x in it:
-                if it.multi_index[0]==0:
+        for i in range(8):
+            for j in range(8):
+                if i == 0:
                     c = 1/sqrt(2)
                 else:
                     c = 1
-                x[...] = sqrt(2/8)*c*cos((pi*it.multi_index[0]*(2*it.multi_index[1]+1))/(2*8))
+                dct_table[i, j] = sqrt(2/8) * c * cos((pi*i*(2*j+1))/(2*8))
         return np.array(dct_table.astype(np.float32))
 
     def compute_DCT(self, f8x8, forward):
