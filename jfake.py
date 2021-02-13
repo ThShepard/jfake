@@ -2,7 +2,6 @@
 import argparse # to parse arguments like --help
 from PIL import Image, ImageOps # pip install pillow - library to read picture files
 import os.path # folder structure of operating system
-import sys # open files from the file system
 import time # to implement timers of individual tasks
 from math import cos, pi, sqrt # used for mathematical operations
 from string import ascii_letters
@@ -17,8 +16,8 @@ parser.add_argument("--input", "-i", required=True, help="Input image file [BMP]
 parser.add_argument("--output", "-o", type=str, default="output", help="Define output folder %(prog)s (default: %(default)s)")
 parser.add_argument("--verbose", "-v", action="store_true", dest="verbose", help="Write all steps to terminal (default: False)")
 parser.add_argument("--debug", "-d", action="store_true", dest="debug", help="Write all steps to output folder (default: False)")
-parser.add_argument("--quality", "-q", type=np.int8, default="50", dest="quality", help="JPEG-Quality [1-99] %(prog)s (default: %(default)s)")
-parser.add_argument("--multiplier", "-m", type=np.int8, default="0", dest="multiplier", help="Multiplier %(prog)s (default: Automatic)")
+parser.add_argument("--quality", "-q", type=int, default="50", dest="quality", help="JPEG-Quality [1-99] %(prog)s (default: %(default)s)")
+parser.add_argument("--multiplier", "-m", type=int, default="0", dest="multiplier", help="Multiplier %(prog)s (default: Automatic)")
 parser.add_argument("--benchmark", "-b", action="store_true", dest="benchmark", help="Write needed time per step in file (default: False)")
 parser.add_argument("--entropy", "-e", action="store_true", dest="entropy", help="Calculate entropy in each processing step (default: False)")
 parser.add_argument("--psnr", "-p", action="store_true", dest="psnr", help="Calculate signal-to-noise-ratio (PSNR) (default: False)")
@@ -263,7 +262,12 @@ class Trafo:
         # bring axes in correct order
         rgb = np.swapaxes(rgb, 0,2)
         rgb = np.swapaxes(rgb, 0,1)
-        rgb_img = Image.fromarray(np.asnumpy(rgb).astype(np.uint8),'RGB')
+        if args.cupy:
+            rgb_img = Image.fromarray(np.asnumpy(rgb).astype(np.uint8),'RGB')
+        
+        else:
+            rgb_img = Image.fromarray(rgb.astype(np.uint8),'RGB')
+
         crop_recomb = self.cropping_back(rgb_img)
 
         r = np.array(crop_recomb.getchannel('R')).flatten().astype(np.int16)
@@ -358,8 +362,8 @@ class DCT:
 
     def __compute_dct_table(self):
         """Computes each component of the transformation matrix for the dct. Returns a 8x8 ndarray """
-        dct_table = numpy.empty((8,8))
-        with numpy.nditer(dct_table, op_flags=['readwrite'], flags=['multi_index']) as it:
+        dct_table = np.empty((8,8))
+        with np.nditer(dct_table, op_flags=['readwrite'], flags=['multi_index']) as it:
             for x in it:
                 if it.multi_index[0]==0:
                     c = 1/sqrt(2)
@@ -592,7 +596,9 @@ class Entropy:
         from collections import Counter
         """Builds a dictionary of values with total probabilities and returns entropy H
         H = -sum(p(i)*log(p(i)))  bit/symbol"""
-        values = np.asnumpy(values)
+        if args.cupy:
+            values = np.asnumpy(values)
+
         value_counter = Counter(values)
         H = 0
         pixel = len(values)
@@ -676,9 +682,13 @@ def subtract_images(img_input, img_output, img_height, img_width):
 
     diff_multiplied = diff * args.multiplier
     diff_multiplied = np.clip(diff_multiplied, 0, 255)
-
-    diff_img = Image.fromarray(np.asnumpy(diff).astype(np.uint8), 'RGB')
-    diff_img_multiplied = Image.fromarray(np.asnumpy(diff_multiplied).astype(np.uint8), 'RGB')
+    
+    if args.cupy:
+        diff_img = Image.fromarray(np.asnumpy(diff).astype(np.uint8), 'RGB')
+        diff_img_multiplied = Image.fromarray(np.asnumpy(diff_multiplied).astype(np.uint8), 'RGB')
+    else:
+        diff_img = Image.fromarray(diff.astype(np.uint8), 'RGB')
+        diff_img_multiplied = Image.fromarray(diff_multiplied.astype(np.uint8), 'RGB')
     return diff_img, diff_img_multiplied
 
 def trafo_dct_q():
