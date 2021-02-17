@@ -173,6 +173,10 @@ class Trafo:
 
     def __write_to_txtfile(self, y8x8, cb8x8, cr8x8):
         """writing the values 8x8 blocks of each pic (y, cb, cr) to a textfile"""
+        if args.cupy:
+            y8x8 = np.asnumpy(y8x8)
+            cb8x8 = np.asnumpy(cb8x8)
+            cr8x8  = np.asnumpy(cr8x8)
         with open(os.path.join(inputpath, args.output, "debug", infilename + "_y.txt"), "w") as y_txt:
             with open(os.path.join(inputpath, args.output, "debug", infilename + "_cb.txt"), "w") as cb_txt:
                 with open(os.path.join(inputpath, args.output, "debug", infilename + "_cr.txt"), "w") as cr_txt:
@@ -226,9 +230,14 @@ class Trafo:
         y = y.reshape(self.height_e, self.width_e)
         cb = cb.reshape(self.height_e, self.width_e)
         cr = cr.reshape(self.height_e, self.width_e)
-        imgy = Image.fromarray(y, 'L')
-        imgcb = Image.fromarray(cb, 'L')
-        imgcr = Image.fromarray(cr, 'L')
+        if args.cupy:
+            imgy = Image.fromarray(np.asnumpy(y), 'L')
+            imgcb = Image.fromarray(np.asnumpy(cb), 'L')
+            imgcr = Image.fromarray(np.asnumpy(cr), 'L')
+        else:
+            imgy = Image.fromarray(y, 'L')
+            imgcb = Image.fromarray(cb, 'L')
+            imgcr = Image.fromarray(cr, 'L')
         imgy.save(os.path.join(inputpath, args.output, "debug", infilename + "_y.png"))
         imgcb.save(os.path.join(inputpath, args.output, "debug", infilename + "_cb.png"))
         imgcr.save(os.path.join(inputpath, args.output, "debug", infilename + "_cr.png"))
@@ -267,7 +276,7 @@ class Trafo:
         rgb = np.swapaxes(rgb, 0,1)
         if args.cupy:
             rgb_img = Image.fromarray(np.asnumpy(rgb).astype(np.uint8),'RGB')
-        
+
         else:
             rgb_img = Image.fromarray(rgb.astype(np.uint8),'RGB')
 
@@ -290,8 +299,8 @@ class Trafo:
         left_upper_y = height_diff // 2
         right_lower_x = left_upper_x + self.width
         right_lower_y = left_upper_y + self.height
-        crop_recomb = rgb_img.crop((left_upper_x, left_upper_y, right_lower_x, right_lower_y)) 
-        return crop_recomb       
+        crop_recomb = rgb_img.crop((left_upper_x, left_upper_y, right_lower_x, right_lower_y))
+        return crop_recomb
 
     def get_rgb(self):
         r = np.array(self.img.getchannel('R')).flatten()
@@ -325,9 +334,13 @@ class DCT:
 
     def __write_to_txtfileFDCT(self, y8x8, cb8x8, cr8x8):
         """writing the values 8x8 blocks of each FDCT-pic (y, cb, cr) to a textfile"""
-        y8x8 = np.round(y8x8, 3)
-        cb8x8 = np.round(cb8x8, 3)
-        cr8x8 = np.round(cr8x8, 3)
+        y8x8 = np.around(y8x8, 3)
+        cb8x8 = np.around(cb8x8, 3)
+        cr8x8 = np.around(cr8x8, 3)
+        if args.cupy:
+            y8x8 =  np.asnumpy(y8x8)
+            cb8x8 = np.asnumpy(cb8x8)
+            cr8x8 = np.asnumpy(cr8x8)
         with open(os.path.join(inputpath, args.output, "debug", infilename + "_FDCT_y.txt"), "w") as FDCT_y_txt:
             with open(os.path.join(inputpath, args.output, "debug", infilename + "_FDCT_cb.txt"), "w") as FDCT_cb_txt:
                 with open(os.path.join(inputpath, args.output, "debug", infilename + "_FDCT_cr.txt"), "w") as FDCT_cr_txt:
@@ -345,9 +358,13 @@ class DCT:
 
     def __write_to_txtfileIDCT(self, y8x8, cb8x8, cr8x8):
         """writing the values 8x8 blocks of each IDCT-pic (y, cb, cr) to a textfile"""
-        y8x8 = np.round(y8x8, 1)
-        cb8x8 = np.round(cb8x8, 1)
-        cr8x8 = np.round(cr8x8, 1)
+        y8x8 = np.around(y8x8, 3)
+        cb8x8 = np.around(cb8x8, 3)
+        cr8x8 = np.around(cr8x8, 3)
+        if args.cupy:
+            y8x8 =  np.asnumpy(y8x8)
+            cb8x8 = np.asnumpy(cb8x8)
+            cr8x8 = np.asnumpy(cr8x8)
         with open(os.path.join(inputpath, args.output, "debug", infilename + "_IDCT_y.txt"), "w") as IDCT_y_txt:
             with open(os.path.join(inputpath, args.output, "debug", infilename + "_IDCT_cb.txt"), "w") as IDCT_cb_txt:
                 with open(os.path.join(inputpath, args.output, "debug", infilename + "_IDCT_cr.txt"), "w") as IDCT_cr_txt:
@@ -376,7 +393,7 @@ class DCT:
         return np.array(dct_table.astype(np.float32))
 
     def compute_DCT(self, f8x8, forward):
-        """splits lists with 64 elements into 8x8 element lists and 
+        """splits lists with 64 elements into 8x8 element lists and
         returns list of 8x8 blocks with DCT coefficients. Forward = True for FDCT, False for IDCT"""
         dct_table = self.__compute_dct_table()
         if args.numba:
@@ -393,8 +410,8 @@ class DCT:
         return f8x8
 
     def execute_DCT(self, forward):
-        """Executes FDCT-computation for each color space. 
-        Forward = True for FDCT, False for IDCT"""        
+        """Executes FDCT-computation for each color space.
+        Forward = True for FDCT, False for IDCT"""
         if forward==True:
             if(args.verbose):
                 print("Computing FDCT")
@@ -479,6 +496,10 @@ class Quantization:
         y8x8 = y8x8.reshape(y8x8.shape[0], 64)
         cb8x8 = cb8x8.reshape(cb8x8.shape[0], 64)
         cr8x8 = cr8x8.reshape(cr8x8.shape[0], 64)
+        if args.cupy:
+            y8x8 = np.asnumpy(y8x8)
+            cb8x8 = np.asnumpy(cb8x8)
+            cr8x8 = np.asnumpy(cr8x8)
 
         with open(os.path.join(inputpath, args.output, "debug", infilename + "_quantization_y.txt"), "w") as y_txt:
             with open(os.path.join(inputpath, args.output, "debug", infilename + "_quantization_cb.txt"), "w") as cb_txt:
@@ -685,7 +706,7 @@ def subtract_images(img_input, img_output, img_height, img_width):
 
     diff_multiplied = diff * args.multiplier
     diff_multiplied = np.clip(diff_multiplied, 0, 255)
-    
+
     if args.cupy:
         diff_img = Image.fromarray(np.asnumpy(diff).astype(np.uint8), 'RGB')
         diff_img_multiplied = Image.fromarray(np.asnumpy(diff_multiplied).astype(np.uint8), 'RGB')
@@ -747,7 +768,7 @@ def trafo_dct_q():
     out_img, rgb_output = tr.ycbcr2rgb(y_r,cb_r,cr_r)
     end = time.time()
     print("* Time elapsed for YCbCr -> RGB:       " + format((end - start), '.3f') + 's')
-    start_subtraction = time.time()   
+    start_subtraction = time.time()
     img_height, img_width = tr.get_size()
     diff_img, diff_img_multiplied = subtract_images(rgb_input, rgb_output, img_height, img_width)
     if(args.debug):
