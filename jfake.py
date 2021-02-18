@@ -2,10 +2,8 @@
 import argparse # to parse arguments like --help
 from PIL import Image, ImageOps # pip install pillow - library to read picture files
 import os.path # folder structure of operating system
-import sys # open files from the file system
 import time # to implement timers of individual tasks
 from math import cos, pi, sqrt # used for mathematical operations
-import numpy as np # pip install numpy - used for mathematical operations
 from string import ascii_letters
 # initialize parser
 #  type= filetype
@@ -18,19 +16,28 @@ parser.add_argument("--input", "-i", required=True, help="Input image file [BMP]
 parser.add_argument("--output", "-o", type=str, default="output", help="Define output folder %(prog)s (default: %(default)s)")
 parser.add_argument("--verbose", "-v", action="store_true", dest="verbose", help="Write all steps to terminal (default: False)")
 parser.add_argument("--debug", "-d", action="store_true", dest="debug", help="Write all steps to output folder (default: False)")
-parser.add_argument("--quality", "-q", type=np.int8, default="50", dest="quality", help="JPEG-Quality [1-99] %(prog)s (default: %(default)s)")
-parser.add_argument("--multiplier", "-m", type=np.int8, default="0", dest="multiplier", help="Multiplier %(prog)s (default: Automatic)")
+parser.add_argument("--quality", "-q", type=int, default="50", dest="quality", help="JPEG-Quality [1-99] %(prog)s (default: %(default)s)")
+parser.add_argument("--multiplier", "-m", type=int, default="0", dest="multiplier", help="Multiplier %(prog)s (default: Automatic)")
 parser.add_argument("--benchmark", "-b", action="store_true", dest="benchmark", help="Write needed time per step in file (default: False)")
 parser.add_argument("--entropy", "-e", action="store_true", dest="entropy", help="Calculate entropy in each processing step (default: False)")
 parser.add_argument("--psnr", "-p", action="store_true", dest="psnr", help="Calculate signal-to-noise-ratio (PSNR) (default: False)")
 parser.add_argument("--numba", "-n", action="store_true", dest="numba", help="Use numba jit compiler for better performance (default: False)")
+parser.add_argument("--cupy", "-c", action="store_true", dest="cupy", help="Use cupy to allocate CUDA for better performance (default: False)")
 args = parser.parse_args()
 
 if args.numba:
-    import numba as nb
+    import numba as nb # pip install wheel - pip install numba
+
+if args.cupy:
+    import cupy as np # pip install cupy - used for mathematical operations using CUDA
+else:
+    import numpy as np # pip install numpy - used for mathematical operations
 
 if args.quality <= 0 or args.quality > 99:
     raise Exception("The quality value should be in range of 1 to 99!")
+
+if args.numba and args.cupy:
+    raise Exception("Using Cupy and Numba at the same time is not possible.")
 
 auto = False
 if args.multiplier == 0:
@@ -105,7 +112,7 @@ class Trafo:
         self.r = np.array(self.img_ext.getchannel('R')).flatten()
         self.g = np.array(self.img_ext.getchannel('G')).flatten()
         self.b = np.array(self.img_ext.getchannel('B')).flatten()
-        self.rgb = np.concatenate(([self.r],[self.g],[self.b]))
+        self.rgb = np.concatenate((np.array([self.r]), np.array([self.g]), np.array([self.b])))
         self.trafo_table = np.array([
         [0.299,0.587,0.114],
         [-0.169,-0.331,0.5],
@@ -166,6 +173,10 @@ class Trafo:
 
     def __write_to_txtfile(self, y8x8, cb8x8, cr8x8):
         """writing the values 8x8 blocks of each pic (y, cb, cr) to a textfile"""
+        if args.cupy:
+            y8x8 = np.asnumpy(y8x8)
+            cb8x8 = np.asnumpy(cb8x8)
+            cr8x8  = np.asnumpy(cr8x8)
         with open(os.path.join(inputpath, args.output, "debug", infilename + "_y.txt"), "w") as y_txt:
             with open(os.path.join(inputpath, args.output, "debug", infilename + "_cb.txt"), "w") as cb_txt:
                 with open(os.path.join(inputpath, args.output, "debug", infilename + "_cr.txt"), "w") as cr_txt:
@@ -199,9 +210,9 @@ class Trafo:
             cb = ycbcr[1] + 128
             cr = ycbcr [2] + 128
 
-            y =  np.round(y).astype(np.uint8)
-            cb = np.round(cb).astype(np.uint8)
-            cr = np.round(cr).astype(np.uint8)
+            y =  np.rint(y).astype(np.uint8)
+            cb = np.rint(cb).astype(np.uint8)
+            cr = np.rint(cr).astype(np.uint8)
 
         if(args.debug):
             self.save_ycbcr_channels(y, cb, cr)
@@ -219,9 +230,14 @@ class Trafo:
         y = y.reshape(self.height_e, self.width_e)
         cb = cb.reshape(self.height_e, self.width_e)
         cr = cr.reshape(self.height_e, self.width_e)
-        imgy = Image.fromarray(y, 'L')
-        imgcb = Image.fromarray(cb, 'L')
-        imgcr = Image.fromarray(cr, 'L')
+        if args.cupy:
+            imgy = Image.fromarray(np.asnumpy(y), 'L')
+            imgcb = Image.fromarray(np.asnumpy(cb), 'L')
+            imgcr = Image.fromarray(np.asnumpy(cr), 'L')
+        else:
+            imgy = Image.fromarray(y, 'L')
+            imgcb = Image.fromarray(cb, 'L')
+            imgcr = Image.fromarray(cr, 'L')
         imgy.save(os.path.join(inputpath, args.output, "debug", infilename + "_y.png"))
         imgcb.save(os.path.join(inputpath, args.output, "debug", infilename + "_cb.png"))
         imgcr.save(os.path.join(inputpath, args.output, "debug", infilename + "_cr.png"))
@@ -258,13 +274,18 @@ class Trafo:
         # bring axes in correct order
         rgb = np.swapaxes(rgb, 0,2)
         rgb = np.swapaxes(rgb, 0,1)
-        rgb_img = Image.fromarray(rgb.astype(np.uint8),'RGB')
+        if args.cupy:
+            rgb_img = Image.fromarray(np.asnumpy(rgb).astype(np.uint8),'RGB')
+
+        else:
+            rgb_img = Image.fromarray(rgb.astype(np.uint8),'RGB')
+
         crop_recomb = self.cropping_back(rgb_img)
 
         r = np.array(crop_recomb.getchannel('R')).flatten().astype(np.int16)
         g = np.array(crop_recomb.getchannel('G')).flatten().astype(np.int16)
         b = np.array(crop_recomb.getchannel('B')).flatten().astype(np.int16)
-        rgb_out = np.concatenate(([r],[g],[b]))
+        rgb_out = np.concatenate((np.array([r]), np.array([g]), np.array([b])))
 
         if(args.debug):
             crop_recomb.save(os.path.join(inputpath, args.output, "debug", infilename + "_rücktrafo.png"))
@@ -278,14 +299,14 @@ class Trafo:
         left_upper_y = height_diff // 2
         right_lower_x = left_upper_x + self.width
         right_lower_y = left_upper_y + self.height
-        crop_recomb = rgb_img.crop((left_upper_x, left_upper_y, right_lower_x, right_lower_y)) 
-        return crop_recomb       
+        crop_recomb = rgb_img.crop((left_upper_x, left_upper_y, right_lower_x, right_lower_y))
+        return crop_recomb
 
     def get_rgb(self):
         r = np.array(self.img.getchannel('R')).flatten()
         g = np.array(self.img.getchannel('G')).flatten()
         b = np.array(self.img.getchannel('B')).flatten()
-        rgb = np.concatenate(([r],[g],[b]))
+        rgb = np.concatenate((np.array([r]), np.array([g]), np.array([b])))
         return rgb.astype(np.int16)
 
     def get_size(self):
@@ -313,9 +334,13 @@ class DCT:
 
     def __write_to_txtfileFDCT(self, y8x8, cb8x8, cr8x8):
         """writing the values 8x8 blocks of each FDCT-pic (y, cb, cr) to a textfile"""
-        y8x8 = np.round(y8x8, 3)
-        cb8x8 = np.round(cb8x8, 3)
-        cr8x8 = np.round(cr8x8, 3)
+        y8x8 = np.around(y8x8, 3)
+        cb8x8 = np.around(cb8x8, 3)
+        cr8x8 = np.around(cr8x8, 3)
+        if args.cupy:
+            y8x8 =  np.asnumpy(y8x8)
+            cb8x8 = np.asnumpy(cb8x8)
+            cr8x8 = np.asnumpy(cr8x8)
         with open(os.path.join(inputpath, args.output, "debug", infilename + "_FDCT_y.txt"), "w") as FDCT_y_txt:
             with open(os.path.join(inputpath, args.output, "debug", infilename + "_FDCT_cb.txt"), "w") as FDCT_cb_txt:
                 with open(os.path.join(inputpath, args.output, "debug", infilename + "_FDCT_cr.txt"), "w") as FDCT_cr_txt:
@@ -333,9 +358,13 @@ class DCT:
 
     def __write_to_txtfileIDCT(self, y8x8, cb8x8, cr8x8):
         """writing the values 8x8 blocks of each IDCT-pic (y, cb, cr) to a textfile"""
-        y8x8 = np.round(y8x8, 1)
-        cb8x8 = np.round(cb8x8, 1)
-        cr8x8 = np.round(cr8x8, 1)
+        y8x8 = np.around(y8x8, 3)
+        cb8x8 = np.around(cb8x8, 3)
+        cr8x8 = np.around(cr8x8, 3)
+        if args.cupy:
+            y8x8 =  np.asnumpy(y8x8)
+            cb8x8 = np.asnumpy(cb8x8)
+            cr8x8 = np.asnumpy(cr8x8)
         with open(os.path.join(inputpath, args.output, "debug", infilename + "_IDCT_y.txt"), "w") as IDCT_y_txt:
             with open(os.path.join(inputpath, args.output, "debug", infilename + "_IDCT_cb.txt"), "w") as IDCT_cb_txt:
                 with open(os.path.join(inputpath, args.output, "debug", infilename + "_IDCT_cr.txt"), "w") as IDCT_cr_txt:
@@ -354,17 +383,17 @@ class DCT:
     def __compute_dct_table(self):
         """Computes each component of the transformation matrix for the dct. Returns a 8x8 ndarray """
         dct_table = np.empty((8,8))
-        with np.nditer(dct_table, op_flags=['readwrite'], flags=['multi_index']) as it:
-            for x in it:
-                if it.multi_index[0]==0:
-                    c = 1/np.sqrt(2)
+        for i in range(8):
+            for j in range(8):
+                if i == 0:
+                    c = 1/sqrt(2)
                 else:
                     c = 1
-                x[...] = np.sqrt(2/8)*c*np.cos((np.pi*it.multi_index[0]*(2*it.multi_index[1]+1))/(2*8))
-        return dct_table.astype(np.float32)
+                dct_table[i, j] = sqrt(2/8) * c * cos((pi*i*(2*j+1))/(2*8))
+        return np.array(dct_table.astype(np.float32))
 
     def compute_DCT(self, f8x8, forward):
-        """splits lists with 64 elements into 8x8 element lists and 
+        """splits lists with 64 elements into 8x8 element lists and
         returns list of 8x8 blocks with DCT coefficients. Forward = True for FDCT, False for IDCT"""
         dct_table = self.__compute_dct_table()
         if args.numba:
@@ -381,8 +410,8 @@ class DCT:
         return f8x8
 
     def execute_DCT(self, forward):
-        """Executes FDCT-computation for each color space. 
-        Forward = True for FDCT, False for IDCT"""        
+        """Executes FDCT-computation for each color space.
+        Forward = True for FDCT, False for IDCT"""
         if forward==True:
             if(args.verbose):
                 print("Computing FDCT")
@@ -455,7 +484,8 @@ class Quantization:
         if(args.debug):
             self.__write_qtables_to_textfile(self.quality_qtable_y, self.quality_qtable_c)
 
-        Q = round(self.__check_qualityvalue(self.quality_qtable_y, self.quality_qtable_c), 2)
+        tmp = self.__check_qualityvalue(self.quality_qtable_y, self.quality_qtable_c)
+        Q = np.rint(tmp)
 
         if(args.verbose):
             print("approximated computed check for quality value: " + str(Q))
@@ -466,6 +496,10 @@ class Quantization:
         y8x8 = y8x8.reshape(y8x8.shape[0], 64)
         cb8x8 = cb8x8.reshape(cb8x8.shape[0], 64)
         cr8x8 = cr8x8.reshape(cr8x8.shape[0], 64)
+        if args.cupy:
+            y8x8 = np.asnumpy(y8x8)
+            cb8x8 = np.asnumpy(cb8x8)
+            cr8x8 = np.asnumpy(cr8x8)
 
         with open(os.path.join(inputpath, args.output, "debug", infilename + "_quantization_y.txt"), "w") as y_txt:
             with open(os.path.join(inputpath, args.output, "debug", infilename + "_quantization_cb.txt"), "w") as cb_txt:
@@ -498,7 +532,7 @@ class Quantization:
         m = (avg_y + 2*avg_c) / 3
         D = (abs(avg_y-avg_c) * 0.49) * 2
         Q = 100 - m + D
-        return Q
+        return Q.astype(np.float32)
 
     def __compute_qual_qtable(self, table):
         """computes new quantization table from quality value and base quantization table"""
@@ -506,7 +540,7 @@ class Quantization:
             S = 5000//self.quality
         else:
             S = 200 - 2*self.quality
-        quality_qtable = ([S]*table + 50) / 100
+        quality_qtable = (np.array([S])*table + 50) / 100
         quality_qtable = np.floor(quality_qtable).astype(np.uint8)
         return quality_qtable
 
@@ -567,7 +601,7 @@ class Entropy:
         else:
             with open (os.path.join(inputpath, args.output, infilename + "_entropy.txt"), "a") as entropy_txt:
                 for i, channel in enumerate([c1, c2, c3]):
-                    channel = np.round(channel.flatten()).astype(np.int16)
+                    channel = np.rint(channel.flatten()).astype(np.int16)
                     H = Entropy.__compute_entropy(self, channel)
                     if i == 0:
                         channel_string = "Y "
@@ -583,18 +617,19 @@ class Entropy:
                         entropy_txt.write("Entropy in channel " + str(channel_string) + " = " + str(H) + " bit per coefficient" + "\n")
 
     def __compute_entropy(self, values):
-        from collections import defaultdict
+        from collections import Counter
         """Builds a dictionary of values with total probabilities and returns entropy H
         H = -sum(p(i)*log(p(i)))  bit/symbol"""
-        value_counter = defaultdict(int)
-        for value in values:
-            value_counter[value] += 1
+        if args.cupy:
+            values = np.asnumpy(values)
+
+        value_counter = Counter(values)
         H = 0
         pixel = len(values)
-        for value in value_counter:
-            pi = value_counter[value]/pixel
+        for value in value_counter.values():
+            pi = value/pixel
             H = H + pi*np.log2(pi)
-        H = -round(H, 3)
+        H = -round(float(H), 3)
         return H
 
 if args.numba:
@@ -672,8 +707,12 @@ def subtract_images(img_input, img_output, img_height, img_width):
     diff_multiplied = diff * args.multiplier
     diff_multiplied = np.clip(diff_multiplied, 0, 255)
 
-    diff_img = Image.fromarray(diff.astype(np.uint8), 'RGB')
-    diff_img_multiplied = Image.fromarray(diff_multiplied.astype(np.uint8), 'RGB')
+    if args.cupy:
+        diff_img = Image.fromarray(np.asnumpy(diff).astype(np.uint8), 'RGB')
+        diff_img_multiplied = Image.fromarray(np.asnumpy(diff_multiplied).astype(np.uint8), 'RGB')
+    else:
+        diff_img = Image.fromarray(diff.astype(np.uint8), 'RGB')
+        diff_img_multiplied = Image.fromarray(diff_multiplied.astype(np.uint8), 'RGB')
     return diff_img, diff_img_multiplied
 
 def trafo_dct_q():
@@ -729,7 +768,7 @@ def trafo_dct_q():
     out_img, rgb_output = tr.ycbcr2rgb(y_r,cb_r,cr_r)
     end = time.time()
     print("* Time elapsed for YCbCr -> RGB:       " + format((end - start), '.3f') + 's')
-    start_subtraction = time.time()   
+    start_subtraction = time.time()
     img_height, img_width = tr.get_size()
     diff_img, diff_img_multiplied = subtract_images(rgb_input, rgb_output, img_height, img_width)
     if(args.debug):
