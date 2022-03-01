@@ -24,7 +24,7 @@ parser.add_argument(
     "-o",
     type=str,
     default="output",
-    help="Define output folder %(prog)s (default: %(default)s)",
+    help="Define output folder (default: %(default)s)",
 )
 parser.add_argument(
     "--verbose",
@@ -46,7 +46,7 @@ parser.add_argument(
     type=int,
     default="50",
     dest="quality",
-    help="JPEG-Quality [1-99] %(prog)s (default: %(default)s)",
+    help="JPEG-Quality [1-99] (default: %(default)s)",
 )
 parser.add_argument(
     "--multiplier",
@@ -54,7 +54,7 @@ parser.add_argument(
     type=int,
     default="0",
     dest="multiplier",
-    help="Multiplier %(prog)s (default: Automatic)",
+    help="Multiplier (default: Automatic)",
 )
 parser.add_argument(
     "--benchmark",
@@ -199,10 +199,18 @@ class Trafo:
             (np.array([self.r]), np.array([self.g]), np.array([self.b]))
         )
         self.trafo_table = np.array(
-            [[0.299, 0.587, 0.114], [-0.169, -0.331, 0.5], [0.5, -0.419, -0.081]]
+            [
+                [0.299, 0.587, 0.114],
+                [-0.169, -0.331, 0.5],
+                [0.5, -0.419, -0.081],
+            ]
         ).astype(np.float32)
         self.backtrafo_table = np.array(
-            [[1, 0, 1.402], [1, -0.34414, -0.71414], [1, 1.772, 0]]
+            [
+                [1, 0, 1.402],
+                [1, -0.34414, -0.71414],
+                [1, 1.772, 0],
+            ]
         ).astype(np.float32)
 
     def __extend_img(self):
@@ -797,9 +805,11 @@ class Entropy:
                         channel_string = "G "
                     elif i == 2:
                         channel_string = "B "
-                    print(f"- Entropy in channel {channel_string}: {H} bit per pixel")
+                    print(
+                        f"- Entropy in channel {channel_string}: {H:.3f} bit per pixel"
+                    )
                     entropy_txt.write(
-                        f"Entropy in channel {channel_string} = {H} bit per pixel\n"
+                        f"Entropy in channel {channel_string} = {H:.3f} bit per pixel\n"
                     )
 
         else:
@@ -817,17 +827,17 @@ class Entropy:
                         channel_string = "Cr"
                     if pixels == True:
                         print(
-                            f"- Entropy in channel {channel_string}: {H} bit per pixel"
+                            f"- Entropy in channel {channel_string}: {H:.3f} bit per pixel"
                         )
                         entropy_txt.write(
-                            f"Entropy in channel {channel_string} = {H} bit per pixel\n"
+                            f"Entropy in channel {channel_string} = {H:.3f} bit per pixel\n"
                         )
                     else:
                         print(
-                            f"- Entropy in channel {channel_string}: {H} bit per dct coefficient"
+                            f"- Entropy in channel {channel_string}: {H:.3f} bit per dct coefficient"
                         )
                         entropy_txt.write(
-                            f"Entropy in channel {channel_string} = {H} bit per dct coefficient\n"
+                            f"Entropy in channel {channel_string} = {H:.3f} bit per dct coefficient\n"
                         )
 
     def __compute_entropy(self, values):
@@ -845,8 +855,7 @@ class Entropy:
         for value in value_counter.values():
             pi = value / pixel
             H = H + pi * np.log2(pi)
-        H = -round(float(H), 3)
-        return H
+        return -H
 
 
 if args.numba:
