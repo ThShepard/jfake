@@ -102,10 +102,10 @@ else:
     import numpy as np  # pip install numpy - used for mathematical operations
 
 if args.quality <= 0 or args.quality > 99:
-    raise Exception("The quality value should be in range of 1 to 99!")
+    raise ValueError("The quality value should be in range of 1 to 99!")
 
 if args.numba and args.cupy:
-    raise Exception("Using Cupy and Numba at the same time is not possible.")
+    raise RuntimeError("Using Cupy and Numba at the same time is not possible.")
 
 auto = False
 if args.multiplier == 0:
@@ -280,29 +280,14 @@ class Trafo:
                     "w",
                 ) as cr_txt:
                     for i, block in enumerate(y8x8):
-                        y_txt.write("Block: " + str(i + 1) + "\n")
-                        cb_txt.write("Block: " + str(i + 1) + "\n")
-                        cr_txt.write("Block: " + str(i + 1) + "\n")
+                        y_txt.write(f"Block: {i + 1} \n")
+                        cb_txt.write(f"Block: {i + 1} \n")
+                        cr_txt.write(f"Block: {i + 1} \n")
                         for j in range(8):
                             for k in range(8):
-                                y_txt.write(
-                                    str(j * 8 + k + 1)
-                                    + ": "
-                                    + str(y8x8[i][j][k])
-                                    + "; "
-                                )
-                                cb_txt.write(
-                                    str(j * 8 + k + 1)
-                                    + ": "
-                                    + str(cb8x8[i][j][k])
-                                    + "; "
-                                )
-                                cr_txt.write(
-                                    str(j * 8 + k + 1)
-                                    + ": "
-                                    + str(cr8x8[i][j][k])
-                                    + "; "
-                                )
+                                y_txt.write(f"{j * 8 + k + 1}: {y8x8[i][j][k]};")
+                                cb_txt.write(f"{j * 8 + k + 1}: {cb8x8[i][j][k]};")
+                                cr_txt.write(f"{j * 8 + k + 1}: {cr8x8[i][j][k]};")
                         y_txt.write("\n")
                         cb_txt.write("\n")
                         cr_txt.write("\n")
@@ -319,8 +304,8 @@ class Trafo:
             and self.img.mode != "YCbCr"
             and self.img.mode != "RGBA"
         ):
-            raise Exception(
-                "The Picture has mode: " + self.img.mode + " but it must be RGB!"
+            raise ValueError(
+                f"The Picture has mode: {self.img.mode} but it must be RGB!"
             )
         if args.numba:
             y, cb, cr = numba_rgb2ycbcr(self.trafo_table, self.rgb)
@@ -492,17 +477,13 @@ class DCT:
                     "w",
                 ) as FDCT_cr_txt:
                     for i, block in enumerate(y8x8):
-                        FDCT_y_txt.write("Block: " + str(i + 1) + "\n")
-                        FDCT_cb_txt.write("Block: " + str(i + 1) + "\n")
-                        FDCT_cr_txt.write("Block: " + str(i + 1) + "\n")
+                        FDCT_y_txt.write(f"Block: {i + 1} \n")
+                        FDCT_cb_txt.write(f"Block: {i + 1} \n")
+                        FDCT_cr_txt.write(f"Block: {i + 1} \n")
                         for j in range(64):
-                            FDCT_y_txt.write(str(j + 1) + ": " + str(y8x8[i][j]) + "; ")
-                            FDCT_cb_txt.write(
-                                str(j + 1) + ": " + str(cb8x8[i][j]) + "; "
-                            )
-                            FDCT_cr_txt.write(
-                                str(j + 1) + ": " + str(cr8x8[i][j]) + "; "
-                            )
+                            FDCT_y_txt.write(f"{j + 1}: {y8x8[i][j]}; ")
+                            FDCT_cb_txt.write(f"{j + 1}: {cb8x8[i][j]}; ")
+                            FDCT_cr_txt.write(f"{j + 1}: {cr8x8[i][j]}; ")
                         FDCT_y_txt.write("\n")
                         FDCT_cb_txt.write("\n")
                         FDCT_cr_txt.write("\n")
@@ -533,17 +514,13 @@ class DCT:
                     "w",
                 ) as IDCT_cr_txt:
                     for i, block in enumerate(y8x8):
-                        IDCT_y_txt.write("Block: " + str(i + 1) + "\n")
-                        IDCT_cb_txt.write("Block: " + str(i + 1) + "\n")
-                        IDCT_cr_txt.write("Block: " + str(i + 1) + "\n")
+                        IDCT_y_txt.write(f"Block: {i + 1}\n")
+                        IDCT_cb_txt.write(f"Block: {i + 1}\n")
+                        IDCT_cr_txt.write(f"Block: {i + 1}\n")
                         for j in range(64):
-                            IDCT_y_txt.write(str(j + 1) + ": " + str(y8x8[i][j]) + "; ")
-                            IDCT_cb_txt.write(
-                                str(j + 1) + ": " + str(cb8x8[i][j]) + "; "
-                            )
-                            IDCT_cr_txt.write(
-                                str(j + 1) + ": " + str(cr8x8[i][j]) + "; "
-                            )
+                            IDCT_y_txt.write(f"{j + 1}: {y8x8[i][j]}; ")
+                            IDCT_cb_txt.write(f"{j + 1}: {cb8x8[i][j]}; ")
+                            IDCT_cr_txt.write(f"{j + 1}: {cr8x8[i][j]}; ")
                         IDCT_y_txt.write("\n")
                         IDCT_cb_txt.write("\n")
                         IDCT_cr_txt.write("\n")
@@ -672,7 +649,7 @@ class Quantization:
         Q = np.rint(tmp)
 
         if args.verbose:
-            print("approximated computed check for quality value: " + str(Q))
+            print(f"approximated computed check for quality value: {Q}")
             print(" jfake - beginning backtransformation ".center(80, "*"))
 
     def __write_to_txtfile(self, y8x8, cb8x8, cr8x8):
@@ -736,8 +713,8 @@ class Quantization:
                 "w",
             ) as qtable_c_txt:
                 for i in range(8):
-                    qtable_y_txt.write(str(qtable_y[i, :]) + "\n")
-                    qtable_c_txt.write(str(qtable_c[i, :]) + "\n")
+                    qtable_y_txt.write(f"{qtable_y[i, :]}\n")
+                    qtable_c_txt.write(f"{qtable_c[i, :]}\n")
 
     def __check_qualityvalue(self, qtable_y, qtable_c):
         """calculates the approximate quality value from the computed qunatization tables"""
@@ -820,20 +797,11 @@ class Entropy:
                         channel_string = "G "
                     elif i == 2:
                         channel_string = "B "
-                    print(
-                        "- Entropy in channel",
-                        str(channel_string) + ":",
-                        str(H),
-                        "bit per pixel",
-                    )
+                    print(f"- Entropy in channel {channel_string}: {H} bit per pixel")
                     entropy_txt.write(
-                        "Entropy in channel "
-                        + str(channel_string)
-                        + " = "
-                        + str(H)
-                        + " bit per pixel"
-                        + "\n"
+                        f"Entropy in channel {channel_string} = {H} bit per pixel\n"
                     )
+
         else:
             with open(
                 os.path.join(inputpath, args.output, infilename + "_entropy.txt"), "a"
@@ -849,33 +817,17 @@ class Entropy:
                         channel_string = "Cr"
                     if pixels == True:
                         print(
-                            "- Entropy in channel",
-                            str(channel_string) + ":",
-                            str(H),
-                            "bit per pixel",
+                            f"- Entropy in channel {channel_string}: {H} bit per pixel"
                         )
                         entropy_txt.write(
-                            "Entropy in channel "
-                            + str(channel_string)
-                            + " = "
-                            + str(H)
-                            + " bit per pixel"
-                            + "\n"
+                            f"Entropy in channel {channel_string} = {H} bit per pixel\n"
                         )
                     else:
                         print(
-                            "- Entropy in channel",
-                            str(channel_string) + ":",
-                            str(H),
-                            "bit per coefficient",
+                            f"- Entropy in channel {channel_string}: {H} bit per dct coefficient"
                         )
                         entropy_txt.write(
-                            "Entropy in channel "
-                            + str(channel_string)
-                            + " = "
-                            + str(H)
-                            + " bit per coefficient"
-                            + "\n"
+                            f"Entropy in channel {channel_string} = {H} bit per dct coefficient\n"
                         )
 
     def __compute_entropy(self, values):
@@ -883,6 +835,7 @@ class Entropy:
 
         """Builds a dictionary of values with total probabilities and returns entropy H
         H = -sum(p(i)*log(p(i)))  bit/symbol"""
+
         if args.cupy:
             values = np.asnumpy(values)
 
@@ -1001,62 +954,50 @@ def trafo_dct_q():
     y, cb, cr = tr.rgb2ycbcr()
     fdct = DCT(tr.split8x8(y, cb, cr, tr.height_e, tr.width_e), infile, infilename)
     end = time.time()
-    print(
-        "* Time elapsed for RGB -> YCbCr:       " + format((end - start), ".3f") + "s"
-    )
+    print(f"* Time elapsed for RGB -> YCbCr:       {end - start:.3}s")
     if args.benchmark:
         with open(
             os.path.join(inputpath, args.output, infilename + "_benchmark.txt"), "a"
         ) as file:
-            file.write(
-                "   jfake Benchmark\nRGB -> YCbCr: "
-                + format((end - start), ".3f")
-                + "s\n"
-            )
+            file.write(f"   jfake Benchmark\nRGB -> YCbCr: {end - start:3f}s\n")
 
     """fdct"""
     start = time.time()
     FDCT64 = fdct.execute_DCT(forward=True)
     end = time.time()
-    print(
-        "* Time elapsed for FDCT:               " + format((end - start), ".3f") + "s"
-    )
+    print(f"* Time elapsed for FDCT:               {end - start:.3}s")
     if args.benchmark:
         with open(
             os.path.join(inputpath, args.output, infilename + "_benchmark.txt"), "a"
         ) as file:
-            file.write("FDCT:         " + format((end - start), ".3f") + "s\n")
+            file.write(f"FDCT:         {end - start:.3}s")
 
     """quantization"""
     start = time.time()
     qztion = Quantization(FDCT64, args.quality, infilename)
     y, cb, cr = qztion.quantize(None, None, None, forward=True)
     end = time.time()
-    print(
-        "* Time elapsed for quantization:       " + format((end - start), ".3f") + "s"
-    )
+    print(f"* Time elapsed for quantization:       {end - start:.3}s")
     ycbcr = qztion.quantize(y, cb, cr, forward=False)
     end2 = time.time()
-    print("* Time elapsed for dequantization:     " + format((end2 - end), ".3f") + "s")
+    print(f"* Time elapsed for dequantization:     {end - start:.3}s")
     if args.benchmark:
         with open(
             os.path.join(inputpath, args.output, infilename + "_benchmark.txt"), "a"
         ) as file:
-            file.write("Quantization: " + format((end - start), ".3f") + "s\n")
+            file.write(f"Quantization: {end - start:.3}s\n")
 
     """IDCT"""
     start = time.time()
     idct = DCT(ycbcr, infile, infilename)
     IDCT64 = idct.execute_DCT(forward=False)
     end = time.time()
-    print(
-        "* Time elapsed for IDCT:               " + format((end - start), ".3f") + "s"
-    )
+    print(f"* Time elapsed for IDCT:               {end - start:.3}s")
     if args.benchmark:
         with open(
             os.path.join(inputpath, args.output, infilename + "_benchmark.txt"), "a"
         ) as file:
-            file.write("IDCT:         " + format((end - start), ".3f") + "s\n")
+            file.write(f"IDCT:         {end - start:.3}s\n")
 
     if args.verbose:
         print("Performing colorspace transformation from YCbCr to RGB")
@@ -1064,9 +1005,7 @@ def trafo_dct_q():
     y_r, cb_r, cr_r = tr.recombine8x8(IDCT64[0], IDCT64[1], IDCT64[2])
     out_img, rgb_output = tr.ycbcr2rgb(y_r, cb_r, cr_r)
     end = time.time()
-    print(
-        "* Time elapsed for YCbCr -> RGB:       " + format((end - start), ".3f") + "s"
-    )
+    print(f"* Time elapsed for YCbCr -> RGB:       {end - start:.3}s")
     start_subtraction = time.time()
     img_height, img_width = tr.get_size()
     diff_img, diff_img_multiplied = subtract_images(
@@ -1086,33 +1025,31 @@ def trafo_dct_q():
             os.path.join(inputpath, args.output, infilename + "_psnr.txt")
         ):
             os.remove(os.path.join(inputpath, args.output, infilename + "_psnr.txt"))
-        print("- PSNR R:", str(round(noise_r, 3)), "dB")
-        print("- PSNR G:", str(round(noise_g, 3)), "dB")
-        print("- PSNR B:", str(round(noise_b, 3)), "dB")
-        print("- Min SNR R:", str(round(min_noise_r, 3)), "dB")
-        print("- Min SNR G:", str(round(min_noise_g, 3)), "dB")
-        print("- Min SNR B:", str(round(min_noise_b, 3)), "dB")
+        print(f"- PSNR R: {noise_r:.3} dB")
+        print(f"- PSNR G: {noise_g:.3} dB")
+        print(f"- PSNR B: {noise_b:.3} dB")
+        print(f"- Min SNR R: {min_noise_r:.3} dB")
+        print(f"- Min SNR G: {min_noise_g:.3} dB")
+        print(f"- Min SNR B: {min_noise_b:.3} dB")
         with open(
             os.path.join(inputpath, args.output, infilename + "_psnr.txt"), "w"
         ) as snr_txt:
-            print("PSNR R:", str(round(noise_r, 3)), "dB", file=snr_txt)
-            print("PSNR G:", str(round(noise_g, 3)), "dB", file=snr_txt)
-            print("PSNR B:", str(round(noise_b, 3)), "dB", file=snr_txt)
-            print("Min SNR R:", str(round(min_noise_r, 3)), "dB", file=snr_txt)
-            print("Min SNR G:", str(round(min_noise_g, 3)), "dB", file=snr_txt)
-            print("Min SNR B:", str(round(min_noise_b, 3)), "dB", file=snr_txt)
+            print(f"PSNR R: {noise_r:.3} dB", file=snr_txt)
+            print(f"PSNR G: {noise_g:.3} dB", file=snr_txt)
+            print(f"PSNR B: {noise_b:.3} dB", file=snr_txt)
+            print(f"Min SNR R: {min_noise_r:.3} dB", file=snr_txt)
+            print(f"Min SNR G: {min_noise_g:.3} dB", file=snr_txt)
+            print(f"Min SNR B: {min_noise_b:.3} dB", file=snr_txt)
 
     end_subtraction = time.time()
     print(
-        "* Time elapsed for subtracting images: "
-        + format((end_subtraction - start_subtraction), ".3f")
-        + "s"
+        f"* Time elapsed for subtracting images: {end_subtraction - start_subtraction:.3}s"
     )
     if args.benchmark:
         with open(
             os.path.join(inputpath, args.output, infilename + "_benchmark.txt"), "a"
         ) as file:
-            file.write("YCbCr -> RGB: " + format((end - start), ".3f") + "s\n")
+            file.write(f"YCbCr -> RGB: {end - start:.3} s\n")
     return out_img, diff_img_multiplied
 
 
@@ -1123,12 +1060,12 @@ start = time.time()
 out_img.save(os.path.join(inputpath, args.output, infilename + "_output.png"))
 diff_img_multiplied.save(os.path.join(inputpath, args.output, infilename + "_diff.png"))
 end = time.time()
-print("* Time elapsed for writing file:       " + format((end - start), ".3f") + "s")
+print(f"* Time elapsed for writing file:       {end - start:.3}s")
 if args.benchmark:
     with open(
         os.path.join(inputpath, args.output, infilename + "_benchmark.txt"), "a"
     ) as file:
-        file.write("Writing file: " + format((end - start), ".3f") + "s\n")
+        file.write(f"Writing file: {end - start:.3}s\n")
 
 # Write used arguments in .txt file
 if args.benchmark:
@@ -1137,4 +1074,4 @@ if args.benchmark:
         os.path.join(inputpath, args.output, infilename + "_benchmark.txt"), "a"
     ) as file:
         file.write("---------------------\n")
-        file.write("Complete:     " + format((benchstop - benchstart), ".3f") + "s")
+        file.write(f"Complete:     {benchstop - benchstart:.3}s")
